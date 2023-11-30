@@ -70,7 +70,7 @@ while true ; do
 	# link=$(curl "$instance/proxy/stream/$watchnow/hls.m3u8" | grep -A2 "NAME=.$resolution" | tail -n1)
 	# mpv "$link"
 
-	streamlink -p mpv "https://twitch.tv/$watchnow" "$resolution"
+	streamlink -p mpv --twitch-disable-ads "https://twitch.tv/$watchnow" "$resolution"
 
 	fav=$(printf "%s\n%s\n" "No" "Yes" | fzf --height=10 --border-label="╢ Do you want to add this streamer to favs? ╟" --border=top --border-label-pos=3 --color=label:italic)
 
