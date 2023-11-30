@@ -39,16 +39,15 @@ getgame() {
 
 # Find streamers with more than X viewers
 findstreamers () {
-	echo "Parsing streamers..."
+	echo "Looking for streamers..."
 	while true ; do
 		json=$(curl -Ls "$instance/api/discover/$game?cursor=$cursor" | jq)
-		streamer=$(echo "$json" | jq -r '.data.streams[].streamer.name')
+		streamers=$(echo "$json" | jq -r '.data.streams[].streamer.name')
 		cursor=$(echo "$json" | jq -r 'last(.data.streams[].cursor)')
-		echo "$streamer" >> $streamerlist
+		echo "$streamers" >> $streamerlist
 		if [ $(echo "$json" | jq -r "last(.data.streams[].viewers)") -lt $minviewers ] ; then
 			break
 		fi
-		printf "%s " "$streamer"
 	done
 
 	sort -u "$streamerlist" -o "$streamerlist"
@@ -64,9 +63,10 @@ case $1 in
 		;;
 esac
 
-
+echo "Parsing streamers..."
 while read -r line ; do
 	curl -Ls "$instance/api/users/$line" | jq --arg jqLanguage "$language" '.data | select(.stream.tags[] | contains($jqLanguage)) | {login: .login, followers: .followers, title: (.stream.title | .[0:20]), viewers: .stream.viewers}' >> "$streams"
+	printf "%s " "$line"
 done < "$streamerlist"
 
 while true ; do
