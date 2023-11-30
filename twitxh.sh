@@ -11,6 +11,7 @@ streamerlist=$(mktemp)
 streams=$(mktemp)
 
 mkdir -p "$dir"
+sort -u "$favs" -o "$favs"
 
 # Getting list of games
 
@@ -53,24 +54,17 @@ findstreamers () {
 	sort -u "$streamerlist" -o "$streamerlist"
 }
 
-case $1 in
-	-f) streamerlist="$favs"
-		;;
-	*)
-		gettinglist ;
-		getgame ;
-		findstreamers ;
-		;;
-esac
 
+parsingstreamers() {
 echo "Parsing streamers..."
 while read -r line ; do
 	curl -Ls "$instance/api/users/$line" | jq --arg jqLanguage "$language" '.data | select(.stream.tags[] | contains($jqLanguage)) | {login: .login, followers: .followers, title: (.stream.title | .[0:20]), viewers: .stream.viewers}' >> "$streams"
 	printf "%s " "$line"
 done < "$streamerlist"
+}
 
+watch() {
 while true ; do
-
 	watchnow=$(cat "$streams" | jq -r '[.login, .followers, .title, .viewers] | @tsv' | column -s$'\t' -t -o' | ' | awk '{print $NF,$0}' | sort -nr | cut -f2- -d' ' | fzf --height=10 --border-label="╢ Which streamer do you want to watch? ╟" --border=top --border-label-pos=3 --color=label:italic | awk -F' | ' '{print $1}')
 
 	link=$(curl "$instance/proxy/stream/$watchnow/hls.m3u8" | grep -A2 "NAME=.$resolution" | tail -n1)
@@ -89,3 +83,29 @@ while true ; do
 		break
 	fi
 done
+}
+
+case $1 in
+	-h) echo "-f favs ; -a add all to favs" ;
+		;;
+
+	-a) 	gettinglist ;
+		getgame ;
+		findstreamers ;
+		parsingstreamers ;
+		cat "$streams" | jq -r '.login' >> "$favs"
+
+		;;
+
+	-f) streamerlist="$favs"
+		parsingstreamers ;
+		watch ;
+		;;
+	*)
+		gettinglist ;
+		getgame ;
+		findstreamers ;
+		parsingstreamers ;
+		watch ;
+		;;
+esac
