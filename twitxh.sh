@@ -109,11 +109,11 @@ parsingstreamers() {
 
 addtowatch() {
 	while read -r line ; do
-		listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq --arg game "$game_orig" -r '.data[] | select(.title == "All videos") | .videos[] | select(.game.name == $game) | select(.duration > 10000) | .id')
+		listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq --arg game "$game_orig" -r '.data[] | select(.title == "All videos") | .videos[] | select(.duration > 10000) | {id: .id, game: .game.name, login: .streamer.login} | [.id, .game, .login] | @tsv')
 		if [ -z "$listofvids" ] ; then
 			continue
 		else
-			echo "$listofvids" | sed "s/$/;$game_orig;$line/" >> "$towatch"
+			echo "$listofvids" >> "$towatch"
 		fi
 		sort -u "$towatch" -o "$towatch"
 
@@ -132,15 +132,15 @@ watch() {
 				sed -i "/$watchnow/d" "$towatch"
 				continue
 			fi
-			video=$(echo "$watchnow" | awk -F';' '{print $1}')
-			streamer=$(echo "$watchnow" | awk -F';' '{print $NF}')
+			video=$(echo "$watchnow" | awk -F'\t' '{print $1}')
+			streamer=$(echo "$watchnow" | awk -F'\t' '{print $NF}')
 
 			link=$(curl -Ls "$instance/proxy/vod/$video/video.m3u8"  | grep -A2 "NAME=.$resolution" | tail -n1)
 			if [ -z "$link" ] ; then
 				continue
 			fi
 			mpv --start=15:00 "$link"
-			sed -i "/^$video;/d" "$towatch"
+			sed -i "/^$video\t/d" "$towatch"
 			echo "$watchnow" >> "$watched"
 			echo "Ctrl-C to exit... 10 sec"
 
