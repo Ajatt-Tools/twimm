@@ -12,9 +12,35 @@ watched="$dir/watched"
 blacklist="$dir/blacklist"
 streamerlist=$(mktemp)
 streams=$(mktemp)
+find_done=0
+parsing_done=0
 
 mkdir -p "$dir"
 sort -u "$favs" -o "$favs"
+
+
+usage() {
+	echo "Usage: $(basename $0) [OPTIONS]"
+	echo "This script allows you to watch (mostly random) streams and videos from Twitch."
+	echo
+	echo "Options:"
+	echo "  -l language    Define the language (default: Español)"
+	echo "  -r resolution  Define the resolution (default: 480p)"
+	echo "  -g game        Define the game (default: asks with fzf)"
+	echo "  -c             Parse clips"
+	echo "  -w             Watch random clips from parsed list"
+	echo "  -f             Check favs' live"
+	echo "  -a             Parse streamers and add all to favs"
+	echo "  -h             Display this help message"
+	echo
+	echo "Examples:"
+	echo "  $(basename $0) -l English -r 720p        Set language to English and resolution to 720p"
+	echo "  $(basename $0) -c                        Enable clips"
+	echo "  $(basename $0) -f                        Use favs"
+	echo "  $(basename $0) -a                        Add all to favs"
+	exit 1
+}
+
 
 # Getting list of games
 
@@ -38,42 +64,53 @@ gettinglist() {
 
 # Get game
 getgame() {
-	game_orig=$(cat "$gamelist" | fzf --height=10 --border-label="╢ Which game do you want to watch? ╟" --border=top --border-label-pos=3 --color=label:italic)
+
+	if [ -z "$game_orig" ] ; then
+		game_orig=$(cat "$gamelist" | fzf --height=10 --border-label="╢ Which game do you want to watch? ╟" --border=top --border-label-pos=3 --color=label:italic)
+	fi
+
 	game=$(echo "$game_orig" | sed 's/ /%20/g')
 }
 
 
 # Find streamers with more than X viewers
 findstreamers () {
-	echo "Looking for streamers..."
-	while true ; do
-		json=$(curl -Ls "$instance/api/discover/$game?cursor=$cursor" | jq)
-		streamers=$(echo "$json" | jq -r '.data.streams[].streamer.name')
-		cursor=$(echo "$json" | jq -r 'last(.data.streams[].cursor)')
-		echo "$streamers" >> $streamerlist
-		if [ $(echo "$json" | jq -r "last(.data.streams[].viewers)") -lt $minviewers ] ; then
-			break
-		fi
-	done
+	if [ "$find_done" -eq 1 ] ; then
+		true
+	else
+		echo "Looking for streamers..."
+		while true ; do
+			json=$(curl -Ls "$instance/api/discover/$game?cursor=$cursor" | jq)
+			streamers=$(echo "$json" | jq -r '.data.streams[].streamer.name')
+			cursor=$(echo "$json" | jq -r 'last(.data.streams[].cursor)')
+			echo "$streamers" >> $streamerlist
+			if [ $(echo "$json" | jq -r "last(.data.streams[].viewers)") -lt $minviewers ] ; then
+				break
+			fi
+		done
 
-	sort -u "$streamerlist" -o "$streamerlist"
+		sort -u "$streamerlist" -o "$streamerlist"
+	fi
+	find_done=1
 }
 
-
 parsingstreamers() {
-	echo "Parsing streamers..."
-	while read -r line ; do
-		curl -Ls "$instance/api/users/$line" | jq --arg jqLanguage "$language" '.data | select(.stream.tags[] | contains($jqLanguage)) | {login: .login, followers: .followers, title: (.stream.title | .[0:20]), viewers: .stream.viewers}' >> "$streams"
-		printf "%s " "$line"
-	done < "$streamerlist"
+	if [ "$parsing_done" -eq 1 ] ; then
+		true
+	else
+		echo "Parsing streamers..."
+		while read -r line ; do
+			curl -Ls "$instance/api/users/$line" | jq --arg jqLanguage "$language" '.data | select(.stream.tags[] | contains($jqLanguage)) | {login: .login, followers: .followers, title: (.stream.title | .[0:20]), viewers: .stream.viewers}' >> "$streams"
+			printf "%s " "$line"
+		done < "$streamerlist"
+	fi
+	parsing_done=1
 }
 
 addtowatch() {
 	while read -r line ; do
 		listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq --arg game "$game_orig" -r '.data[] | select(.title == "All videos") | .videos[] | select(.game.name == $game) | select(.duration > 10000) | .id')
 		if [ -z "$listofvids" ] ; then
-			echo "No videos found, choose another user"
-			sed -i "/^$watchnow |/d" "$streams"
 			continue
 		else
 			echo "$listofvids" | sed "s/$/;$game_orig;$line/" >> "$towatch"
@@ -137,43 +174,61 @@ watch() {
 done
 }
 
-case $1 in
-	-h) echo "-f favs ; -a add all to favs ; -c clips ; -cw clips watch" ;
-		;;
 
-	-c)
-		clips=1
-		gettinglist ;
-		getgame ;
-		findstreamers ;
-		parsingstreamers ;
-		addtowatch ;
-		watch ;
-		;;
-	-cw)
-		clips=1
-		gettinglist ;
-		getgame ;
-		watch ;
-		;;
 
-	-a) 	gettinglist ;
-		getgame ;
-		findstreamers ;
-		parsingstreamers ;
-		cat "$streams" | jq -r '.login' >> "$favs"
 
-		;;
 
-	-f) streamerlist="$favs"
-		parsingstreamers ;
-		watch ;
-		;;
-	*)
-		gettinglist ;
-		getgame ;
-		findstreamers ;
-		parsingstreamers ;
-		watch ;
-		;;
-esac
+
+while getopts 'l:r:g:cwfah' OPTION; do
+	case "$OPTION" in
+		l)
+			language="$OPTARG"
+			;;
+		r)
+			resolution="$OPTARG"
+			;;
+		g)
+			game_orig="$OPTARG"
+			;;
+		c)
+			clips=1
+			gettinglist ;
+			getgame ;
+			findstreamers ;
+			parsingstreamers ;
+			addtowatch ;
+
+			;;
+		w)
+			clips=1
+			gettinglist ;
+			getgame ;
+			watch ;
+			;;
+
+		f)
+			streamerlist="$favs"
+			parsingstreamers
+			watch
+			exit
+			;;
+		a)
+			gettinglist
+			getgame
+			findstreamers
+			parsingstreamers
+			cat "$streams" | jq -r '.login' >> "$favs"
+			exit
+			;;
+		h)
+			usage
+			;;
+		*)
+			gettinglist ;
+			getgame ;
+			findstreamers ;
+			parsingstreamers ;
+			watch ;
+			;;
+	esac
+done
