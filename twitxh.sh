@@ -15,6 +15,7 @@ streamerlist=$(mktemp)
 streams=$(mktemp)
 find_done=0
 parsing_done=0
+clips=0
 
 mkdir -p "$dir"
 sort -u "$favs" -o "$favs"
@@ -22,25 +23,20 @@ sort -u "$favs" -o "$favs"
 getinstance() {
 
 	curl --max-time 10 -Ls https://codeberg.org/SafeTwitch/safetwitch/raw/branch/master/README.md |
-	grep "https.*|" |
-	grep -v " ✅" |
-	grep -o "https://[[:alnum:].\-]\+" |
-	while IFS= read -r site ; do
-		ws=$(curl -Ls "$site" |
-			grep "index.*\.js" |
-			sed "s|\"></script>||;s|^.*\"|$site|")
-		if [ -z "$ws" ] ; then
-			continue
-		fi
-		api=$(curl --max-time 10 -Ls "$ws" |
-			grep -o 'rootBackendUrl",`${[[:alnum:]]\+}[[:alnum:].\-]\+' |
-			sed 's|^.*\}|https://|')
-echo "$site $api"
-done |
-	awk  '(NF==2) {print $2}' > "$backends"
+		grep "https.*|" | grep -v " ✅" | grep -o "https://[[:alnum:].\-]\+" |
+		while IFS= read -r site ; do
+			ws=$(curl --max-time 1 -Ls "$site" | grep "index.*\.js" | sed "s|\"></script>||;s|^.*\"|$site|")
+			if [ -z "$ws" ] ; then
+				continue
+			fi
+			api=$(curl --max-time 1 -Ls "$ws" | grep -o 'rootBackendUrl",`${[[:alnum:]]\+}[[:alnum:].\-]\+' |sed 's|^.*\}|https://|')
+			echo "$site $api"
+		done | awk  '(NF==2) {print $2}' | shuf > "$backends"
 
 
-}
+	}
+
+# get instance
 
 if [ ! -f "$backends" ] ; then
 	getinstance
@@ -60,6 +56,7 @@ usage() {
 	echo "  -w             Watch random clips from parsed list"
 	echo "  -f             Check favs' live"
 	echo "  -a             Parse streamers and add all to favs"
+	echo "  -s tag         Additional tag to search and parse"
 	echo "  -h             Display this help message"
 	echo
 	echo "Examples:"
@@ -203,12 +200,22 @@ watch() {
 done
 }
 
+addedtags() {
+	if [ -z "$addtags" ] ; then
+		true
+	else
+		echo "$addtags" | sed 's/|/\n/g' | while IFS= read -r line ; do
+		curl -Ls "$instance/api/search/?query=$line" | jq -r '.data.channelsWithTag[] | select(.followers > 1000) | .username' >> "$favs"
+	done
+	fi
+}
 
 
 
 
 
-while getopts 'l:r:g:cwfah' OPTION; do
+
+while getopts 'l:r:g:s:cwfah' OPTION; do
 	case "$OPTION" in
 		l)
 			language="$OPTARG"
@@ -219,6 +226,9 @@ while getopts 'l:r:g:cwfah' OPTION; do
 		g)
 			game_orig="$OPTARG"
 			;;
+		s)
+			addtags="$OPTARG"
+			;;
 		c)
 			clips=1
 			gettinglist ;
@@ -226,13 +236,14 @@ while getopts 'l:r:g:cwfah' OPTION; do
 			findstreamers ;
 			parsingstreamers ;
 			addtowatch ;
-
+			exit
 			;;
 		w)
 			clips=1
 			gettinglist ;
 			getgame ;
 			watch ;
+			exit
 			;;
 
 		f)
@@ -247,17 +258,18 @@ while getopts 'l:r:g:cwfah' OPTION; do
 			findstreamers
 			parsingstreamers
 			cat "$streams" | jq -r '.login' >> "$favs"
+			addedtags
+			sort -u "$favs" -o "$favs"
 			exit
 			;;
 		h)
 			usage
 			;;
-		*)
-			gettinglist ;
-			getgame ;
-			findstreamers ;
-			parsingstreamers ;
-			watch ;
-			;;
 	esac
 done
+
+gettinglist ;
+getgame ;
+findstreamers ;
+parsingstreamers ;
+watch ;
