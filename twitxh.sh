@@ -1,7 +1,7 @@
 #!/bin/bash
 language="Español" # 日本語, Русский, English, Español...
 dir="$HOME/.local/share/twitxh"
-instance="https://api.safetwitch.eu.projectsegfau.lt"
+# instance="https://api.safetwitch.eu.projectsegfau.lt"
 resolution="480p" # 1080p60, 720p60, 480p, 360p, 160p, audio_only
 minviewers="500"
 
@@ -10,6 +10,7 @@ favs="$dir/favs"
 towatch="$dir/towatch"
 watched="$dir/watched"
 blacklist="$dir/blacklist"
+backends="$dir/backends"
 streamerlist=$(mktemp)
 streams=$(mktemp)
 find_done=0
@@ -18,6 +19,34 @@ parsing_done=0
 mkdir -p "$dir"
 sort -u "$favs" -o "$favs"
 
+getinstance() {
+
+	curl --max-time 10 -Ls https://codeberg.org/SafeTwitch/safetwitch/raw/branch/master/README.md |
+	grep "https.*|" |
+	grep -v " ✅" |
+	grep -o "https://[[:alnum:].\-]\+" |
+	while IFS= read -r site ; do
+		ws=$(curl -Ls "$site" |
+			grep "index.*\.js" |
+			sed "s|\"></script>||;s|^.*\"|$site|")
+		if [ -z "$ws" ] ; then
+			continue
+		fi
+		api=$(curl --max-time 10 -Ls "$ws" |
+			grep -o 'rootBackendUrl",`${[[:alnum:]]\+}[[:alnum:].\-]\+' |
+			sed 's|^.*\}|https://|')
+echo "$site $api"
+done |
+	awk  '(NF==2) {print $2}' > "$backends"
+
+
+}
+
+if [ ! -f "$backends" ] ; then
+	getinstance
+fi
+
+instance=$(shuf -n1 "$backends")
 
 usage() {
 	echo "Usage: $(basename $0) [OPTIONS]"
