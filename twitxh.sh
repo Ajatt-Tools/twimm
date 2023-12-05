@@ -102,7 +102,7 @@ addtowatch() {
 
 watch() {
 	while true ; do
-		watchnow=$(cat "$towatch" | grep "$game_orig" | shuf -n1)
+		watchnow=$(cat "$towatch" | grep "${language}$" | grep "$game_orig" | shuf -n1)
 		if [ -z "$watchnow" ] ; then
 			break
 		fi
