@@ -30,7 +30,7 @@ usage() {
     echo "-c   Add to watch list and exit"
     echo "-w   Watch videos"
     echo "-h   Display this help and exit"
-    echo "No flag will cause doing `-a' and `-c'"
+    echo "No flag will cause doing '-a' and '-c'"
     echo
     echo "Examples:"
     echo "$0 -s 'Argentina'"
