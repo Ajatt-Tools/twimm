@@ -86,7 +86,7 @@ process_video() {
 		true
 	else
 		printf "%s " "$line"
-		echo "$listofvids" >> "$towatch"
+		echo "$listofvids" | sed "s/$/\t$language/" >> "$towatch"
 	fi
 }
 
