@@ -62,7 +62,7 @@ process_parsing() {
 		true
 	else
 		printf "%s " "$line"
-		echo "$listofstreamers" >> "$favs"
+		echo "$listofstreamers $language" >> "$favs"
 	fi
 
 }
@@ -81,12 +81,13 @@ parsingstreamers() {
 
 process_video() {
 	local line=$1
+	local lang=$2
 	listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq -r '.data[] | select(.title == "All videos") | .videos[] | select(.duration > 10000) | {id: .id, game: .game.name, login: .streamer.login} | [.id, .game, .login] | @tsv')
 	if [ -z "$listofvids" ] ; then
 		true
 	else
 		printf "%s " "$line"
-		echo "$listofvids" | sed "s/$/\t$language/" >> "$towatch"
+		echo "$listofvids" | sed "s/$/\t$lang/" >> "$towatch"
 	fi
 }
 
