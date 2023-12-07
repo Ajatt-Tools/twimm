@@ -10,6 +10,7 @@ towatch="$dir/towatch"
 watched="$dir/watched"
 last_parsed_file="$dir/last_parsed"
 streamerlist=$(mktemp)
+toparse=$(mktemp)
 
 days_ago=$(date -d "3 days ago" +%s)
 
@@ -96,14 +97,15 @@ process_video() {
 	else
 		local tags=$(echo "$1" | awk -F'\t' '{print $2}')
 		local lang=$(echo "$1" | awk -F'\t' '{print $3}')
-		listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq -r '.data[] | select(.title == "All videos") | .videos[] | select(.duration > 10000) | {id: .id, game: .game.name, login: .streamer.login} | [.id, .game, .login] | @tsv')
+		listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq -r '.data[] | select(.title == "Recent broadcasts") | .videos[] | select(.duration > 10000) | {id: .id, game: .game.name, login: .streamer.login} | [.id, .game, .login] | @tsv')
 		if [ -z "$listofvids" ] ; then
 			true
 		else
 			printf "%s " "$line"
 			echo "$listofvids" | sed "s/$/\t$tags\t$lang/" >> "$towatch"
-			echo "$line $(date +%s)" >> "$last_parsed_file"
 		fi
+		echo "$line $(date +%s)" >> "$last_parsed_file"
+
 	fi
 }
 
@@ -115,7 +117,10 @@ addtowatch() {
 	export days_ago
 	echo
 	echo "Adding streamer recordings"
-	xargs -P 8 -I {} bash -c 'process_video "{}"' < "$favs"
+	comm -23 <(awk '{print $1}' "$favs" | sort) <(awk '{print $1}' "$last_parsed_file" | sort) >> "$toparse"
+	awk -v days_ago="$days_ago" '$2 < days_ago {print $1}' "$last_parsed_file" >> "$toparse"
+	sort -u "$toparse" -o "$toparse"
+	xargs -P 8 -I {} bash -c 'process_video "{}"' < "$toparse"
 	sort -rnk2,2 "$last_parsed_file" -o "$last_parsed_file"
 	awk -i inplace '!x[$1]++' "$last_parsed_file"
 	awk -i inplace -F"\t" '!x[$1]++' "$towatch"
