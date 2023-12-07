@@ -1,6 +1,6 @@
 #!/bin/bash
 language="Español" # 日本語, Русский, English, Español...
-dir="$HOME/.local/share/twitxh"
+dir="$HOME/.local/share/twimm"
 instance="https://api.safetwitch.eu.projectsegfau.lt"
 #instance="https://tta.femboy.band"
 resolution="480p" # 1080p60, 720p60, 480p, 360p, 160p, audio_only
@@ -14,14 +14,12 @@ toparse=$(mktemp)
 
 days_ago=$(date -d "3 days ago" +%s)
 
-
 mkdir -p "$dir"
 touch "$last_parsed_file"
 
 if [ -z "$game_orig" ] ; then
 	game_orig="Just Chatting"
 fi
-
 
 usage() {
 	echo "Usage: $0 [OPTION]..."
@@ -46,9 +44,6 @@ usage() {
 	exit 1
 }
 
-
-
-
 addedtags() {
 	if [ -z "$addtags" ] ; then
 		addtags="$language"
@@ -57,9 +52,6 @@ addedtags() {
 	curl -Ls "$instance/api/search/?query=$line" | jq -r '.data.channelsWithTag[] | select(.followers > 1000) | .username' >> "$streamerlist"
 done
 }
-
-
-
 
 process_parsing() {
 	local line=$1
@@ -84,7 +76,6 @@ parsingstreamers() {
 	awk -i inplace -F"\t" '!x[$1]++' "$favs"
 
 }
-
 
 process_video() {
 	local line=$(echo "$1" | awk -F'\t' '{print $1}')
@@ -147,20 +138,11 @@ watch() {
 		echo "$watchnow" >> "$watched"
 		echo "Ctrl-C to exit... 10 sec"
 
-
-		unset fav more
-
 		sleep 10
 	done
 }
 
-
-
-
-
-
-
-while getopts 'l:r:g:s:cwah' OPTION; do
+while getopts 'l:r:g:s:wh' OPTION; do
 	case "$OPTION" in
 		l)
 			language="$OPTARG"
@@ -174,18 +156,8 @@ while getopts 'l:r:g:s:cwah' OPTION; do
 		s)
 			addtags="$OPTARG"
 			;;
-		c)
-			addtowatch ;
-			exit
-			;;
 		w)
 			watch ;
-			exit
-			;;
-
-		a)
-			addedtags
-			parsingstreamers
 			exit
 			;;
 		h)
