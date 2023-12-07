@@ -5,7 +5,7 @@ instance="https://api.safetwitch.eu.projectsegfau.lt"
 #instance="https://tta.femboy.band"
 resolution="480p" # 1080p60, 720p60, 480p, 360p, 160p, audio_only
 
-favs="$dir/favs"
+tocheck="$dir/tocheck"
 towatch="$dir/towatch"
 watched="$dir/watched"
 last_parsed_file="$dir/last_parsed"
@@ -30,11 +30,8 @@ usage() {
 	echo "-r   Resolution of the video (Default: 480p)"
 	echo "-g   Game name (Default: Just Chatting)"
 	echo "-s   Tags to find"
-	echo "-a   Add tags, parse streamers and exit"
-	echo "-c   Add to watch list and exit"
 	echo "-w   Watch videos"
 	echo "-h   Display this help and exit"
-	echo "No flag will cause doing '-a' and '-c'"
 	echo
 	echo "Examples:"
 	echo "$0 -s 'Argentina'"
@@ -60,7 +57,7 @@ process_parsing() {
 		true
 	else
 		printf "%s " "$line"
-		printf "%s\t%s\n" "$listofstreamers" "$language" >> "$favs"
+		printf "%s\t%s\n" "$listofstreamers" "$language" >> "$tocheck"
 	fi
 
 }
@@ -68,12 +65,12 @@ process_parsing() {
 parsingstreamers() {
 	export -f process_parsing
 	export instance
-	export favs
+	export tocheck
 	export language
 	echo
 	echo "Parsing streamers..."
 	xargs -P 8 -I {} bash -c 'process_parsing "{}"' < "$streamerlist"
-	awk -i inplace -F"\t" '!x[$1]++' "$favs"
+	awk -i inplace -F"\t" '!x[$1]++' "$tocheck"
 
 }
 
@@ -108,7 +105,7 @@ addtowatch() {
 	export days_ago
 	echo
 	echo "Adding streamer recordings"
-	comm -23 <(awk '{print $1}' "$favs" | sort) <(awk '{print $1}' "$last_parsed_file" | sort) >> "$toparse"
+	comm -23 <(awk '{print $1}' "$tocheck" | sort) <(awk '{print $1}' "$last_parsed_file" | sort) >> "$toparse"
 	awk -v days_ago="$days_ago" '$2 < days_ago {print $1}' "$last_parsed_file" >> "$toparse"
 	sort -u "$toparse" -o "$toparse"
 	xargs -P 8 -I {} bash -c 'process_video "{}"' < "$toparse"
