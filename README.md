@@ -29,10 +29,10 @@ No flag will parse streamers and add videos to watch list with default values.
 
 Examples:
 
-`./twitxh.sh -s 'Argentina'`
+`./twimm.sh -s 'Argentina'`
 (to get watchlist of current streamers with Argentina tag)
 
-`./twitxh.sh -l English -r 1080p60 -g 'Dota 2' -w`
+`./twimm.sh -l English -r 1080p60 -g 'Dota 2' -w`
 (to watch English broadcast of the Dota 2 game)
 
 ## How it works
