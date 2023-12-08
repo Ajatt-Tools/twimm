@@ -75,7 +75,8 @@ parsingstreamers() {
 }
 
 process_video() {
-	local line=$(echo "$1" | awk -F'\t' '{print $1}')
+	local all=$(grep "^$1[[:blank:]]" "$tocheck")
+	local line=$(echo "$all" | awk -F'\t' '{print $1}')
 	last_parsed=$(grep "^$line " "$last_parsed_file" | awk '{print $2}')
 	if [ -z "$last_parsed" ] ; then
 		last_parsed=0
@@ -83,8 +84,8 @@ process_video() {
 	if [ "$last_parsed" -ge "$days_ago" ]; then
 		printf "%s " "-$line"
 	else
-		local tags=$(echo "$1" | awk -F'\t' '{print $2}')
-		local lang=$(echo "$1" | awk -F'\t' '{print $3}')
+		local tags=$(echo "$all"| awk -F'\t' '{print $2}')
+		local lang=$(echo "$all" | awk -F'\t' '{print $3}')
 		listofvids=$(curl -Ls "$instance/api/vods/shelve/$line" | jq -r '.data[] | select(.title == "Recent broadcasts") | .videos[] | select(.duration > 10000) | {id: .id, game: .game.name, login: .streamer.login} | [.id, .game, .login] | @tsv')
 		if [ -z "$listofvids" ] ; then
 			true
@@ -101,6 +102,7 @@ addtowatch() {
 	export -f process_video
 	export last_parsed_file
 	export towatch
+	export tocheck
 	export instance
 	export days_ago
 	echo
