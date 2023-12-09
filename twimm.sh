@@ -1,7 +1,7 @@
 #!/bin/bash
-language="Español" # 日本語, Русский, English, Español...
+language="日本語" # 日本語, Русский, English, Español...
 dir="$HOME/.local/share/twimm"
-instance="https://api.safetwitch.eu.projectsegfau.lt"
+instance="${TWIMM_INSTANCE:-https://api.safetwitch.eu.projectsegfau.lt}"
 #instance="https://tta.femboy.band"
 resolution="480p" # 1080p60, 720p60, 480p, 360p, 160p, audio_only
 
@@ -26,7 +26,7 @@ usage() {
 	echo "Automated twitch video parser"
 	echo
 	echo "Options:"
-	echo "-l   Language of the streamer (Default: Español)"
+	echo "-l   Language of the streamer (Default: 日本語)"
 	echo "-r   Resolution of the video (Default: 480p)"
 	echo "-g   Game name (Default: Just Chatting)"
 	echo "-s   Tags to find"
