@@ -2,6 +2,15 @@
 
 This is a bash script that automates the process of finding and watching long Twitch broadcasts based on desired language for language immersion. You can specify the language, resolution, game, and tags of the streamers you want to watch, and the script will parse the available videos from a custom API, save info in a text file and play random broadcasts using mpv.
 
+## Why you shouldn't watch streams?
+
+As you can see in a commit history, older version of this script had an option to watch streams directly. Author of this script thinks that it was a bad decision:
+
+- Twitch streams have ads in it and even if you watch streams in `mpv` you will see an ad placeholder. If streamer is popular, this placeholder may keep for a 2+ minutes which is disturbing
+- You can't seek streams but you can seek broadcasts, for example if streamer is silent (we're doing language immersion, remember?)
+- Seeking a new stream is a task that requires much time for the script and for you. Just watch broadcasts, it's faster.
+- Overall, streams are useless. But if you *NEED* to watch a stream, it's better to use `mpv` with your favorite streamer or check [safetwitch](https://codeberg.org/SafeTwitch/safetwitch) instances to watch Twitch safely in a browser.
+
 ## Requirements
 
 To run this script, you need the following:
@@ -25,7 +34,7 @@ You can run the script with the following options:
 - `-w` Watch videos
 - `-h` Display this help and exit
 
-No flag will parse streamers and add videos to watch list with default values.
+No flag will parse streamers and add videos to the watch list with default values.
 
 Examples:
 
